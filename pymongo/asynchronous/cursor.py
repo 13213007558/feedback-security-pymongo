@@ -239,6 +239,16 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
+            if self._exhaust and self._sock_mgr is not None and self._sock_mgr.conn:
+                # An exhaust stream can fail on any moreToCome batch, including
+                # one whose moreToCome flag was never read because command
+                # validation raised first. The server may still have unread
+                # batches buffered on this pinned socket. Mark the connection so
+                # the pool closes it on checkin rather than reusing it, and keep
+                # the connection manager in exhaust state so cleanup closes the
+                # socket directly (see _cleanup_cursor_lock).
+                self._sock_mgr.conn.exhaust_failed = True
+                self._sock_mgr.update_exhaust(True)
             if exc.timeout:
                 self._die_no_lock()
             else:

@@ -152,6 +152,10 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
         # set to true to indicate that the session now owns the connection.
         self.pinned_txn = False
         self.pinned_cursor = False
+        # True when an exhaust cursor failed while the server could still have
+        # unread moreToCome responses on this socket. Such a connection must be
+        # closed on checkin rather than reused by another operation.
+        self.exhaust_failed = False
         self.active = False
         self.last_timeout = self.opts.socket_timeout
         self.connect_rtt = 0.0
@@ -399,6 +403,11 @@ class _AgnosticBasePool(Generic[_ConnT]):
                 emit_closed = True
             elif self.stale_generation(conn.generation, conn.service_id):
                 close_conn_reason = ConnectionClosedReason.STALE
+            elif conn.exhaust_failed:
+                # An exhaust cursor left potentially unread moreToCome
+                # responses on this socket. Reusing it would let the next
+                # borrower read another cursor's data, so discard it.
+                close_conn_reason = ConnectionClosedReason.ERROR
             else:
                 conn.update_last_checkin_time()
                 conn.update_is_writable(bool(self.is_writable))
