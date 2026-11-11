@@ -31,7 +31,8 @@ from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
-from bson import SON
+import bson
+from bson import SON, Binary
 from pymongo import AsyncMongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
@@ -41,8 +42,12 @@ from pymongo.asynchronous.auth_oidc import (
     OIDCCallbackResult,
     _OIDCAuthenticator,
 )
-from pymongo.auth_oidc_shared import _get_authenticator, _get_k8s_token
-from pymongo.auth_shared import _build_credentials_tuple
+from pymongo.auth_oidc_shared import (
+    _get_authenticator,
+    _get_k8s_token,
+    _host_matches_allowed_hosts,
+)
+from pymongo.auth_shared import _build_credentials_tuple, _OIDCContext
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
@@ -139,6 +144,260 @@ class TestOIDCAllowedHostsCache(unittest.TestCase):
 
         with self.assertRaisesRegex(ConfigurationError, "evil.example.com"):
             _get_authenticator(credentials, ("evil.example.com", 27017), _OIDCAuthenticator)
+
+
+class CountingCallback(OIDCCallback):
+    """An OIDC callback that records every invocation instead of logging in."""
+
+    def __init__(self, access_token: str = "access-token", refresh_token: str | None = None):
+        self.call_count = 0
+        self.contexts: list[OIDCCallbackContext] = []
+        self._access_token = access_token
+        self._refresh_token = refresh_token
+
+    def fetch(self, context: OIDCCallbackContext) -> OIDCCallbackResult:
+        self.call_count += 1
+        self.contexts.append(context)
+        return OIDCCallbackResult(
+            access_token=self._access_token, refresh_token=self._refresh_token
+        )
+
+
+def build_human_credentials(allowed_hosts, callback=None):
+    props = {
+        "OIDC_HUMAN_CALLBACK": callback or CountingCallback(),
+        "ALLOWED_HOSTS": allowed_hosts,
+    }
+    extra = {"authmechanismproperties": props}
+    return _build_credentials_tuple("MONGODB-OIDC", None, "user", None, extra, "test")
+
+
+def build_machine_credentials(callback=None):
+    props = {"OIDC_CALLBACK": callback or CountingCallback()}
+    extra = {"authmechanismproperties": props}
+    return _build_credentials_tuple("MONGODB-OIDC", None, "user", None, extra, "test")
+
+
+class FakeOIDCConnection:
+    """An in-process stand-in for AsyncConnection that answers the OIDC SASL
+    conversation without a socket or a real server."""
+
+    def __init__(self, address, auth_ctx=None):
+        self.address = address
+        self.auth_ctx = auth_ctx
+        self.oidc_token_gen_id = 0
+        self.commands = []
+        self.tokens_seen = []
+
+    async def command(self, database, cmd, no_reauth=False):
+        self.commands.append(dict(cmd))
+        if "saslStart" in cmd:
+            payload = bson.decode(cmd["payload"])
+            if "jwt" in payload:
+                self.tokens_seen.append(payload["jwt"])
+                return {"done": True, "conversationId": 1, "payload": Binary(bson.encode({}))}
+            return {
+                "done": False,
+                "conversationId": 1,
+                "payload": Binary(
+                    bson.encode(
+                        {
+                            "issuer": "https://idp.example.com",
+                            "clientId": "client-id",
+                            "requestScopes": ["scope"],
+                        }
+                    )
+                ),
+            }
+        payload = bson.decode(cmd["payload"])
+        self.tokens_seen.append(payload["jwt"])
+        return {"done": True, "conversationId": 1, "payload": Binary(bson.encode({}))}
+
+
+class TestOIDCAllowedHostsMatching(unittest.TestCase):
+    def test_exact_host_match(self):
+        self.assertTrue(_host_matches_allowed_hosts("example.com", ["example.com"]))
+        self.assertFalse(_host_matches_allowed_hosts("evil.com", ["example.com"]))
+
+    def test_wildcard_subdomain_boundaries(self):
+        allowed = ["*.example.com"]
+        self.assertTrue(_host_matches_allowed_hosts("sub.example.com", allowed))
+        self.assertTrue(_host_matches_allowed_hosts("a.b.example.com", allowed))
+        # The wildcard never matches the bare suffix.
+        self.assertFalse(_host_matches_allowed_hosts("example.com", allowed))
+        # Suffix lookalikes and embedded suffixes must not match.
+        self.assertFalse(_host_matches_allowed_hosts("evilexample.com", allowed))
+        self.assertFalse(_host_matches_allowed_hosts("example.com.evil.com", allowed))
+
+    def test_case_insensitive_match(self):
+        self.assertTrue(_host_matches_allowed_hosts("EXAMPLE.COM", ["example.com"]))
+        self.assertTrue(_host_matches_allowed_hosts("Sub.Example.COM", ["*.example.com"]))
+        self.assertTrue(_host_matches_allowed_hosts("example.com", ["EXAMPLE.COM"]))
+
+    def test_trailing_dot_is_ignored(self):
+        self.assertTrue(_host_matches_allowed_hosts("example.com.", ["example.com"]))
+        self.assertTrue(_host_matches_allowed_hosts("example.com", ["example.com."]))
+        self.assertTrue(_host_matches_allowed_hosts("sub.example.com.", ["*.example.com"]))
+        self.assertTrue(_host_matches_allowed_hosts("sub.example.com", ["*.example.com."]))
+        self.assertFalse(_host_matches_allowed_hosts("evil.com.", ["example.com"]))
+
+    def test_port_does_not_affect_host_matching(self):
+        self.assertTrue(_host_matches_allowed_hosts("example.com", ["example.com"]))
+        for port in (27017, 27018, 443):
+            credentials = build_human_credentials(["example.com"])
+            # The same host must be accepted on any port and rejected on a
+            # different host regardless of port.
+            self.assertIsNotNone(
+                _get_authenticator(credentials, ("example.com", port), _OIDCAuthenticator)
+            )
+            with self.assertRaises(ConfigurationError):
+                _get_authenticator(credentials, ("evil.com", port), _OIDCAuthenticator)
+
+
+class TestOIDCAllowedHostsEnforcement(unittest.IsolatedAsyncioTestCase):
+    async def _run_authenticate(self, credentials, address, reauthenticate=False, auth_ctx=None):
+        from pymongo.asynchronous.auth_oidc import _authenticate_oidc
+
+        conn = FakeOIDCConnection(address, auth_ctx)
+        await _authenticate_oidc(credentials, conn, reauthenticate)
+        return conn
+
+    async def test_allowed_host_runs_human_callback_and_returns_token(self):
+        callback = CountingCallback()
+        credentials = build_human_credentials(["example.com"], callback)
+        conn = await self._run_authenticate(credentials, ("example.com", 27017))
+
+        self.assertEqual(callback.call_count, 1)
+        self.assertEqual(conn.tokens_seen, ["access-token"])
+
+    async def test_rejected_host_blocks_initial_authentication(self):
+        callback = CountingCallback()
+        credentials = build_human_credentials(["example.com"], callback)
+
+        with self.assertRaisesRegex(ConfigurationError, "evil.example.com"):
+            await self._run_authenticate(credentials, ("evil.example.com", 27017))
+
+        self.assertEqual(callback.call_count, 0)
+
+    async def test_rejected_host_blocks_speculative_authentication(self):
+        callback = CountingCallback()
+        credentials = build_human_credentials(["example.com"], callback)
+        # Prime the cache with a token so a speculative JWT would otherwise be sent.
+        authenticator = _get_authenticator(
+            credentials, ("example.com", 27017), _OIDCAuthenticator
+        )
+        authenticator.access_token = "cached-token"
+        self.assertEqual(callback.call_count, 0)
+
+        context = _OIDCContext(
+            credentials, ("evil.example.com", 27017), _OIDCAuthenticator
+        )
+        with self.assertRaisesRegex(ConfigurationError, "evil.example.com"):
+            context.speculate_command()
+
+        self.assertEqual(callback.call_count, 0)
+        # The cached token is untouched and never left the client.
+        self.assertEqual(credentials.cache.data.access_token, "cached-token")
+
+    async def test_rejected_host_blocks_reauthentication_with_cached_token(self):
+        callback = CountingCallback()
+        credentials = build_human_credentials(["example.com"], callback)
+        # First authenticate against the allowed host so a token is cached.
+        allowed_conn = await self._run_authenticate(
+            credentials, ("example.com", 27017), reauthenticate=True
+        )
+        self.assertEqual(allowed_conn.tokens_seen, ["access-token"])
+        self.assertEqual(callback.call_count, 1)
+        self.assertIsNotNone(credentials.cache.data.access_token)
+
+        # Reauthentication against a rejected host must fail before any token
+        # is reused or refreshed and before the human callback runs again.
+        with self.assertRaisesRegex(ConfigurationError, "evil.example.com"):
+            await self._run_authenticate(
+                credentials, ("evil.example.com", 27017), reauthenticate=True
+            )
+
+        self.assertEqual(callback.call_count, 1)
+
+    async def test_rejected_host_blocks_reauthentication_with_refresh_token(self):
+        callback = CountingCallback(refresh_token="refresh-token")
+        credentials = build_human_credentials(["example.com"], callback)
+        await self._run_authenticate(credentials, ("example.com", 27017))
+        self.assertEqual(callback.call_count, 1)
+        self.assertEqual(credentials.cache.data.refresh_token, "refresh-token")
+
+        with self.assertRaisesRegex(ConfigurationError, "evil.example.com"):
+            await self._run_authenticate(
+                credentials, ("evil.example.com", 27018), reauthenticate=True
+            )
+
+        self.assertEqual(callback.call_count, 1)
+
+    async def test_rejected_host_does_not_mutate_cached_authenticator(self):
+        callback = CountingCallback()
+        credentials = build_human_credentials(["good.example.com"], callback)
+        authenticator = _get_authenticator(
+            credentials, ("good.example.com", 27017), _OIDCAuthenticator
+        )
+
+        with self.assertRaises(ConfigurationError):
+            _get_authenticator(credentials, ("evil.example.com", 27017), _OIDCAuthenticator)
+
+        self.assertIs(credentials.cache.data, authenticator)
+        self.assertEqual(callback.call_count, 0)
+
+    async def test_machine_callback_is_not_subject_to_allowed_hosts(self):
+        callback = CountingCallback()
+        credentials = build_machine_credentials(callback)
+        conn = await self._run_authenticate(credentials, ("any-host.example.org", 27017))
+
+        self.assertEqual(callback.call_count, 1)
+        self.assertEqual(conn.tokens_seen, ["access-token"])
+
+    async def test_host_normalization_enforced_through_full_authentication(self):
+        accepted = [
+            ("example.com", ["example.com"]),
+            ("EXAMPLE.COM", ["example.com"]),
+            ("Example.Com.", ["example.com"]),
+            ("sub.example.com", ["*.example.com"]),
+            ("SUB.example.com.", ["*.Example.COM"]),
+            ("a.b.example.com", ["*.example.com"]),
+            ("localhost", ["localhost"]),
+        ]
+        for host, allowed_hosts in accepted:
+            callback = CountingCallback()
+            credentials = build_human_credentials(allowed_hosts, callback)
+            conn = await self._run_authenticate(credentials, (host, 27017))
+            self.assertEqual(callback.call_count, 1, msg=(host, allowed_hosts))
+            self.assertEqual(conn.tokens_seen, ["access-token"], msg=(host, allowed_hosts))
+
+        rejected = [
+            ("evil.com", ["example.com"]),
+            ("example.com", ["*.example.com"]),
+            ("evilexample.com", ["*.example.com"]),
+            ("example.com.evil.com", ["*.example.com"]),
+            ("sub.example.com", ["example.com"]),
+        ]
+        for host, allowed_hosts in rejected:
+            callback = CountingCallback()
+            credentials = build_human_credentials(allowed_hosts, callback)
+            with self.assertRaises(ConfigurationError, msg=(host, allowed_hosts)):
+                await self._run_authenticate(credentials, (host, 27017))
+            self.assertEqual(callback.call_count, 0, msg=(host, allowed_hosts))
+
+    async def test_rejected_host_sends_no_protocol_commands_on_any_port(self):
+        from pymongo.asynchronous.auth_oidc import _authenticate_oidc
+
+        for port in (27017, 27018, 443):
+            callback = CountingCallback()
+            credentials = build_human_credentials(["example.com"], callback)
+            conn = FakeOIDCConnection(("evil.example.com", port))
+            with self.assertRaisesRegex(ConfigurationError, "evil.example.com"):
+                await _authenticate_oidc(credentials, conn, False)
+
+            self.assertEqual(callback.call_count, 0)
+            self.assertEqual(conn.commands, [])
+            self.assertEqual(conn.tokens_seen, [])
 
 
 class TestAuthOIDCHuman(OIDCTestBase):

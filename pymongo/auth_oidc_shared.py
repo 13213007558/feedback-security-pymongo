@@ -195,6 +195,34 @@ class _OIDCAuthenticatorBase:
         }
 
 
+def _normalize_oidc_host(host: str) -> str:
+    """Normalize a hostname for authOIDCAllowedHosts comparison.
+
+    Hostname comparison is case-insensitive and ignores a single trailing
+    root label (the "." of an FQDN), per the MONGODB-OIDC specification.
+    """
+    return host.rstrip(".").lower()
+
+
+def _host_matches_allowed_hosts(host: str, allowed_hosts: list[str]) -> bool:
+    """Return whether host matches any entry in authOIDCAllowedHosts.
+
+    An entry matches exactly, or, when it begins with "*.", it matches any
+    subdomain of the suffix (but not the suffix itself). Comparison is
+    case-insensitive and ignores a trailing dot on either value.
+    """
+    normalized_host = _normalize_oidc_host(host)
+    for pattern in allowed_hosts:
+        normalized_pattern = _normalize_oidc_host(pattern)
+        if normalized_pattern.startswith("*."):
+            suffix = normalized_pattern[1:]
+            if normalized_host.endswith(suffix) and normalized_host != suffix[1:]:
+                return True
+        elif normalized_host == normalized_pattern:
+            return True
+    return False
+
+
 def _get_authenticator(
     credentials: MongoCredential, address: tuple[str, int], authenticator_cls: Callable[..., Any]
 ) -> Any:
@@ -202,16 +230,12 @@ def _get_authenticator(
     principal_name = credentials.username
     properties = credentials.mechanism_properties
 
-    # Validate that the address is allowed.
+    # Validate that the address is allowed. This must run before any token is
+    # returned or cached and before the human callback can start an
+    # interactive login, including on reauthentication and speculative auth.
     if properties.human_callback is not None:
-        found = False
         allowed_hosts = properties.allowed_hosts
-        for patt in allowed_hosts:
-            if patt == address[0]:
-                found = True
-            elif patt.startswith("*.") and address[0].endswith(patt[1:]):
-                found = True
-        if not found:
+        if not _host_matches_allowed_hosts(address[0], allowed_hosts):
             raise ConfigurationError(
                 f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
             )
