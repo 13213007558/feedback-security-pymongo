@@ -135,7 +135,7 @@ def _convert_client_bulk_exception(exception: Exception) -> dict[str, Any]:
     """
     return {
         "errmsg": str(exception),
-        "code": exception.code,  # type: ignore[attr-defined]
+        "code": getattr(exception, "code", None),
         "errtype": exception.__class__.__name__,
     }
 

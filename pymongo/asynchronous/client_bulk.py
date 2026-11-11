@@ -53,6 +53,7 @@ from pymongo.errors import (
     InvalidOperation,
     NotPrimaryError,
     OperationFailure,
+    ProtocolError,
     PyMongoError,
     WaitQueueTimeoutError,
 )
@@ -172,6 +173,7 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
         result: MutableMapping[str, Any],
         conn: AsyncConnection,
         session: AsyncClientSession | None,
+        batch_size: int,
     ) -> None:
         """Internal helper for processing the server reply command cursor."""
         if result.get("cursor"):
@@ -191,9 +193,27 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
             await cmd_cursor._maybe_pin_connection(conn)
 
             # Iterate the cursor to get individual write results.
+            seen_idxs: set[int] = set()
             try:
                 async for doc in cmd_cursor:
-                    original_index = doc["idx"] + self.idx_offset
+                    idx = doc.get("idx")
+                    # An idx is only valid if it uniquely identifies an
+                    # operation in the current batch; anything else is a
+                    # protocol violation and must not be mapped back to an
+                    # operation.
+                    if (
+                        not isinstance(idx, int)
+                        or isinstance(idx, bool)
+                        or idx < 0
+                        or idx >= batch_size
+                        or idx in seen_idxs
+                    ):
+                        raise ProtocolError(
+                            f"Server returned invalid idx {idx!r} in the bulkWrite "
+                            f"results cursor for a batch of {batch_size} operation(s)"
+                        )
+                    seen_idxs.add(idx)
+                    original_index = idx + self.idx_offset
                     op_type, op = self.ops[original_index]
 
                     if not doc["ok"]:
@@ -338,7 +358,9 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
                         _throw_client_bulk_write_exception(full, self.verbose_results)
 
                 # Process the server reply as a command cursor.
-                await self._process_results_cursor(full_result, result, conn, session)
+                await self._process_results_cursor(
+                    full_result, result, conn, session, len(to_send_ops)
+                )
 
                 # Merge this batch's results with the full results.
                 _merge_command(self.ops, self.idx_offset, full_result, result)

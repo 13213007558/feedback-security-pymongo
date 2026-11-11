@@ -23,9 +23,11 @@ from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 
 sys.path[0:0] = [""]
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pymongo
+from bson.codec_options import CodecOptions
+from pymongo.asynchronous import client_bulk as client_bulk_module
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
@@ -37,6 +39,7 @@ from pymongo.errors import (
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import (
     AsyncIntegrationTest,
+    AsyncUnitTest,
     async_client_context,
     unittest,
 )
@@ -683,3 +686,231 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
             if event.command_name == "bulkWrite":
                 bulk_write_events.append(event)
         self.assertEqual(len(bulk_write_events), 2)
+
+
+class _FakeBulkWriteCursor:
+    """A stand-in for the bulkWrite response cursor, yielding pre-baked documents."""
+
+    def __init__(self, docs):
+        self._docs = docs
+        self.alive = True
+        self.closed = False
+
+    async def _maybe_pin_connection(self, conn):
+        pass
+
+    async def close(self):
+        self.alive = False
+        self.closed = True
+
+    def __aiter__(self):
+        return self._iterate()
+
+    async def _iterate(self):
+        for doc in self._docs:
+            yield doc
+
+
+class TestClientBulkWriteResponseValidation(AsyncUnitTest):
+    """Test validation of idx values in client-level bulk write responses.
+
+    These tests use locally fabricated server responses and do not
+    require a running MongoDB server.
+    """
+
+    def _make_bulk(
+        self, namespaces, ordered=True, verbose_results=False, max_write_batch_size=100000
+    ):
+        client = Mock()
+        client.codec_options = CodecOptions()
+        client.options.retry_writes = False
+        conn = Mock()
+        conn.compression_context = None
+        conn.max_wire_version = 25
+        conn.max_bson_size = 16777216
+        conn.max_message_size = 48000000
+        conn.max_write_batch_size = max_write_batch_size
+        conn.address = ("localhost", 27017)
+
+        async def _retryable_write(retryable, func, session, operation, **kwargs):
+            await func(session, conn, False)
+
+        client._retryable_write = _retryable_write
+
+        bulk = _AsyncClientBulk(
+            client,
+            WriteConcern(),
+            ordered=ordered,
+            verbose_results=verbose_results,
+        )
+        for idx, namespace in enumerate(namespaces):
+            bulk.add_insert(namespace, {"_id": idx})
+        return bulk
+
+    async def _run_bulk(self, bulk, replies):
+        """Execute the bulk operation against fabricated server replies."""
+        sent_batches = []
+        self._sent_batches = sent_batches
+
+        async def fake_write_command(
+            self_bulk, bwc, cmd, request_id, msg, op_docs, ns_docs, client
+        ):
+            sent_batches.append(list(op_docs))
+            return replies[len(sent_batches) - 1]
+
+        def fake_cursor(coll, cursor_info, address, **kwargs):
+            return _FakeBulkWriteCursor(cursor_info["firstBatch"])
+
+        with (
+            patch.object(_AsyncClientBulk, "write_command", fake_write_command),
+            patch.object(client_bulk_module, "AsyncCommandCursor", fake_cursor),
+            patch.object(client_bulk_module, "AsyncDatabase", Mock()),
+            patch.object(client_bulk_module, "AsyncCollection", Mock()),
+        ):
+            return await bulk.execute(None, "bulkWrite")
+
+    @staticmethod
+    def _reply(docs, n_inserted):
+        return {
+            "ok": 1,
+            "nInserted": n_inserted,
+            "nErrors": sum(1 for doc in docs if not doc["ok"]),
+            "cursor": {"id": 0, "ns": "admin.$cmd.bulkWrite", "firstBatch": docs},
+        }
+
+    async def test_valid_multi_batch_idx_mapping(self):
+        bulk = self._make_bulk(
+            ["db.coll1", "db.coll2", "db.coll1"],
+            verbose_results=True,
+            max_write_batch_size=2,
+        )
+        replies = [
+            self._reply([{"idx": 0, "ok": 1}, {"idx": 1, "ok": 1}], n_inserted=2),
+            self._reply([{"idx": 0, "ok": 1}], n_inserted=1),
+        ]
+        result = await self._run_bulk(bulk, replies)
+        self.assertEqual(len(self._sent_batches), 2)
+        self.assertEqual(len(self._sent_batches[0]), 2)
+        self.assertEqual(len(self._sent_batches[1]), 1)
+        self.assertEqual(result.inserted_count, 3)
+        self.assertEqual(set(result.insert_results), {0, 1, 2})
+        self.assertEqual(result.insert_results[0].inserted_id, 0)
+        self.assertEqual(result.insert_results[1].inserted_id, 1)
+        self.assertEqual(result.insert_results[2].inserted_id, 2)
+
+    async def test_negative_idx_not_mapped_to_other_namespace(self):
+        bulk = self._make_bulk(
+            ["db.coll1", "db.coll2", "db.coll1"],
+            verbose_results=True,
+            max_write_batch_size=2,
+        )
+        replies = [
+            self._reply([{"idx": 0, "ok": 1}, {"idx": 1, "ok": 1}], n_inserted=2),
+            # idx -1 would silently wrap around to the previous batch's
+            # db.coll2 operation.
+            self._reply([{"idx": -1, "ok": 1}], n_inserted=1),
+        ]
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self._run_bulk(bulk, replies)
+        self.assertIn("idx", context.exception.error["errmsg"])
+        self.assertEqual(context.exception.write_errors, [])
+        # The first batch's results are preserved as a partial result and
+        # the invalid idx neither overwrote them nor was reported as success.
+        partial = context.exception.partial_result
+        self.assertIsNotNone(partial)
+        self.assertEqual(set(partial.insert_results), {0, 1})
+        self.assertEqual(partial.insert_results[1].inserted_id, 1)
+
+    async def test_out_of_range_idx_not_mapped_to_future_batch(self):
+        bulk = self._make_bulk(
+            ["db.coll1", "db.coll2", "db.coll1"],
+            verbose_results=True,
+            max_write_batch_size=2,
+        )
+        replies = [
+            # idx 2 belongs to the next batch (a different namespace) and
+            # must not be accepted for this two-operation batch.
+            self._reply([{"idx": 0, "ok": 1}, {"idx": 2, "ok": 1}], n_inserted=2),
+            self._reply([{"idx": 0, "ok": 1}], n_inserted=1),
+        ]
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self._run_bulk(bulk, replies)
+        self.assertIn("idx", context.exception.error["errmsg"])
+        partial = context.exception.partial_result
+        self.assertIsNotNone(partial)
+        # Operation 2 had not been sent yet and must have no result.
+        self.assertNotIn(2, partial.insert_results)
+
+    async def test_idx_beyond_total_operations_rejected(self):
+        bulk = self._make_bulk(["db.coll1", "db.coll2"], max_write_batch_size=2)
+        replies = [self._reply([{"idx": 0, "ok": 1}, {"idx": 100, "ok": 1}], n_inserted=2)]
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self._run_bulk(bulk, replies)
+        self.assertIn("idx", context.exception.error["errmsg"])
+
+    async def test_duplicate_idx_does_not_overwrite_result(self):
+        bulk = self._make_bulk(
+            ["db.coll1", "db.coll2"], verbose_results=True, max_write_batch_size=2
+        )
+        replies = [
+            self._reply([{"idx": 0, "ok": 1}, {"idx": 0, "ok": 1}], n_inserted=2),
+        ]
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self._run_bulk(bulk, replies)
+        self.assertIn("idx", context.exception.error["errmsg"])
+        partial = context.exception.partial_result
+        self.assertIsNotNone(partial)
+        # The duplicate idx did not overwrite or suppress any result.
+        self.assertEqual(set(partial.insert_results), {0})
+
+    async def test_missing_idx_rejected(self):
+        bulk = self._make_bulk(["db.coll1"], max_write_batch_size=1)
+        replies = [self._reply([{"ok": 1}], n_inserted=1)]
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self._run_bulk(bulk, replies)
+        self.assertIn("idx", context.exception.error["errmsg"])
+
+    async def test_ordered_halts_after_write_error(self):
+        bulk = self._make_bulk(
+            ["db.coll1", "db.coll2", "db.coll1"], ordered=True, max_write_batch_size=2
+        )
+        replies = [
+            self._reply(
+                [{"idx": 0, "ok": 1}, {"idx": 1, "ok": 0, "code": 123, "errmsg": "boom"}],
+                n_inserted=1,
+            ),
+        ]
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self._run_bulk(bulk, replies)
+        # Execution halted after the first batch.
+        self.assertEqual(len(self._sent_batches), 1)
+        self.assertEqual(len(context.exception.write_errors), 1)
+        write_error = context.exception.write_errors[0]
+        self.assertEqual(write_error["idx"], 1)
+        # The error is attributed to the db.coll2 operation (nsInfo index 1).
+        self.assertEqual(write_error["op"], {"insert": 1, "document": {"_id": 1}})
+
+    async def test_unordered_maps_errors_to_correct_operations_across_batches(self):
+        bulk = self._make_bulk(
+            ["db.coll1", "db.coll2", "db.coll1"], ordered=False, max_write_batch_size=2
+        )
+        replies = [
+            self._reply(
+                [{"idx": 0, "ok": 1}, {"idx": 1, "ok": 0, "code": 123, "errmsg": "boom"}],
+                n_inserted=1,
+            ),
+            self._reply(
+                [{"idx": 0, "ok": 0, "code": 456, "errmsg": "bang"}],
+                n_inserted=0,
+            ),
+        ]
+        with self.assertRaises(ClientBulkWriteException) as context:
+            await self._run_bulk(bulk, replies)
+        self.assertEqual(len(self._sent_batches), 2)
+        write_errors = context.exception.write_errors
+        self.assertEqual(len(write_errors), 2)
+        # Each error is mapped back to the correct original operation.
+        self.assertEqual(write_errors[0]["idx"], 1)
+        self.assertEqual(write_errors[0]["op"], {"insert": 1, "document": {"_id": 1}})
+        self.assertEqual(write_errors[1]["idx"], 2)
+        self.assertEqual(write_errors[1]["op"], {"insert": 0, "document": {"_id": 2}})
