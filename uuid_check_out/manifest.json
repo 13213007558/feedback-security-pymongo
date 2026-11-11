@@ -1,0 +1,59 @@
+{
+  "description": "Mixed-representation UUID samples. source_representation declares which client representation wrote the bytes; null means unknown.",
+  "samples": [
+    {
+      "id": "acct-001",
+      "kind": "account",
+      "source_representation": "PYTHON_LEGACY",
+      "bson_hex": "35000000025f69640009000000616363742d3030310005757365725f696400100000000300112233445566778899aabbccddeeff00"
+    },
+    {
+      "id": "acct-002",
+      "kind": "account",
+      "source_representation": "JAVA_LEGACY",
+      "bson_hex": "35000000025f69640009000000616363742d3030320005757365725f6964001000000003706f5e4d3c2b1a6ff8e7d6c5b4a3928100"
+    },
+    {
+      "id": "acct-003",
+      "kind": "account",
+      "source_representation": "CSHARP_LEGACY",
+      "bson_hex": "35000000025f69640009000000616363742d3030330005757365725f69640010000000036b7c8d9e495a27381605f4e3d2c1b0a900"
+    },
+    {
+      "id": "acct-004",
+      "kind": "account",
+      "source_representation": "STANDARD",
+      "bson_hex": "35000000025f69640009000000616363742d3030340005757365725f6964001000000004ffffffff11112222333344444444444400"
+    },
+    {
+      "id": "acct-005",
+      "kind": "account",
+      "source_representation": null,
+      "bson_hex": "35000000025f69640009000000616363742d3030350005757365725f696400100000000311100f0e0d0c0b0a191817161514131200"
+    },
+    {
+      "id": "acct-006",
+      "kind": "account",
+      "source_representation": "STANDARD",
+      "bson_hex": "35000000025f69640009000000616363742d3030360005757365725f6964001000000004deadbeef123456789abcdef01234567800"
+    },
+    {
+      "id": "acct-007",
+      "kind": "account",
+      "source_representation": "PYTHON_LEGACY",
+      "bson_hex": "35000000025f69640009000000616363742d3030370005757365725f6964001000000003deadbeef123456789abcdef01234567800"
+    },
+    {
+      "id": "audit-001",
+      "kind": "audit",
+      "source_representation": "CSHARP_LEGACY",
+      "bson_hex": "46000000025f6964000a00000061756469742d30303100056163746f720010000000030dd001c03412bc4a8def0a1b2c3d4e5f02616374696f6e00060000006c6f67696e0000"
+    },
+    {
+      "id": "audit-002",
+      "kind": "audit",
+      "source_representation": null,
+      "bson_hex": "4f000000025f6964000a00000061756469742d30303200056163746f720010000000035555555566664777888899999999999902616374696f6e000f00000070617373776f72645f72657365740000"
+    }
+  ]
+}

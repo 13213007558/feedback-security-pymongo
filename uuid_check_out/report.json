@@ -1,0 +1,821 @@
+{
+  "tool": "uuid-migration-check",
+  "pymongo_version": "4.20.0.dev0",
+  "summary": {
+    "total_records": 9,
+    "status_counts": {
+      "rewrite": 5,
+      "keep": 2,
+      "ambiguous": 2
+    },
+    "collision_groups": 1,
+    "ejson_hazard_records": [
+      "acct-001",
+      "acct-002",
+      "acct-003",
+      "acct-004",
+      "acct-005",
+      "acct-006",
+      "acct-007",
+      "audit-001",
+      "audit-002"
+    ],
+    "unsafe_records": [
+      "acct-005",
+      "acct-007",
+      "audit-002"
+    ]
+  },
+  "records": [
+    {
+      "record_id": "acct-001",
+      "kind": "account",
+      "declared_source": "PYTHON_LEGACY",
+      "status": "rewrite",
+      "reasons": [
+        "declared PYTHON_LEGACY; rewrite to STANDARD verified by re-decoding"
+      ],
+      "uuid_fields": [
+        {
+          "path": "user_id",
+          "subtype": 3,
+          "stored_hex": "00112233445566778899aabbccddeeff",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "00112233-4455-6677-8899-aabbccddeeff",
+            "JAVA_LEGACY": "77665544-3322-1100-ffee-ddccbbaa9988",
+            "CSHARP_LEGACY": "33221100-5544-7766-8899-aabbccddeeff",
+            "STANDARD": null
+          },
+          "canonical_uuid": "00112233-4455-6677-8899-aabbccddeeff",
+          "query_bytes": {
+            "PYTHON_LEGACY": {
+              "hex": "1e000000055f7100100000000300112233445566778899aabbccddeeff00",
+              "subtype": 3,
+              "matches_stored_bytes": true
+            },
+            "JAVA_LEGACY": {
+              "hex": "1e000000055f710010000000037766554433221100ffeeddccbbaa998800",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "CSHARP_LEGACY": {
+              "hex": "1e000000055f7100100000000333221100554477668899aabbccddeeff00",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "STANDARD": {
+              "hex": "1e000000055f7100100000000400112233445566778899aabbccddeeff00",
+              "subtype": 4,
+              "matches_stored_bytes": false
+            }
+          },
+          "rewrite": {
+            "from_subtype": 3,
+            "to_subtype": 4,
+            "from_hex": "00112233445566778899aabbccddeeff",
+            "to_hex": "00112233445566778899aabbccddeeff"
+          }
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": "35000000025f69640009000000616363742d3030310005757365725f696400100000000400112233445566778899aabbccddeeff00",
+      "rewrite_verified": true,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"acct-001\", \"user_id\": {\"$binary\": {\"base64\": \"ABEiM0RVZneImaq7zN3u/w==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030310005757365725f696400100000000300112233445566778899aabbccddeeff00",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"acct-001\", \"user_id\": {\"$binary\": {\"base64\": \"ABEiM0RVZneImaq7zN3u/w==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030310005757365725f696400100000000400112233445566778899aabbccddeeff00",
+          "bytes_preserved": false,
+          "uuids_preserved": true,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"acct-001\", \"user_id\": {\"$binary\": {\"base64\": \"ABEiM0RVZneImaq7zN3u/w==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030310005757365725f696400100000000300112233445566778899aabbccddeeff00",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "legacy_export_standard_import",
+          "exported_json": "{\"_id\": \"acct-001\", \"user_id\": {\"$binary\": {\"base64\": \"ABEiM0RVZneImaq7zN3u/w==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030310005757365725f696400100000000400112233445566778899aabbccddeeff00",
+          "bytes_preserved": false,
+          "uuids_preserved": true,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        }
+      ],
+      "auto_convertible": true
+    },
+    {
+      "record_id": "acct-002",
+      "kind": "account",
+      "declared_source": "JAVA_LEGACY",
+      "status": "rewrite",
+      "reasons": [
+        "declared JAVA_LEGACY; rewrite to STANDARD verified by re-decoding"
+      ],
+      "uuid_fields": [
+        {
+          "path": "user_id",
+          "subtype": 3,
+          "stored_hex": "706f5e4d3c2b1a6ff8e7d6c5b4a39281",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "706f5e4d-3c2b-1a6f-f8e7-d6c5b4a39281",
+            "JAVA_LEGACY": "6f1a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8",
+            "CSHARP_LEGACY": "4d5e6f70-2b3c-6f1a-f8e7-d6c5b4a39281",
+            "STANDARD": null
+          },
+          "canonical_uuid": "6f1a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8",
+          "query_bytes": {
+            "PYTHON_LEGACY": {
+              "hex": "1e000000055f710010000000036f1a2b3c4d5e6f708192a3b4c5d6e7f800",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "JAVA_LEGACY": {
+              "hex": "1e000000055f71001000000003706f5e4d3c2b1a6ff8e7d6c5b4a3928100",
+              "subtype": 3,
+              "matches_stored_bytes": true
+            },
+            "CSHARP_LEGACY": {
+              "hex": "1e000000055f710010000000033c2b1a6f5e4d706f8192a3b4c5d6e7f800",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "STANDARD": {
+              "hex": "1e000000055f710010000000046f1a2b3c4d5e6f708192a3b4c5d6e7f800",
+              "subtype": 4,
+              "matches_stored_bytes": false
+            }
+          },
+          "rewrite": {
+            "from_subtype": 3,
+            "to_subtype": 4,
+            "from_hex": "706f5e4d3c2b1a6ff8e7d6c5b4a39281",
+            "to_hex": "6f1a2b3c4d5e6f708192a3b4c5d6e7f8"
+          }
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": "35000000025f69640009000000616363742d3030320005757365725f69640010000000046f1a2b3c4d5e6f708192a3b4c5d6e7f800",
+      "rewrite_verified": true,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"acct-002\", \"user_id\": {\"$binary\": {\"base64\": \"cG9eTTwrGm/459bFtKOSgQ==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030320005757365725f6964001000000003706f5e4d3c2b1a6ff8e7d6c5b4a3928100",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"acct-002\", \"user_id\": {\"$binary\": {\"base64\": \"bxorPE1eb3CBkqO0xdbn+A==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030320005757365725f69640010000000046f1a2b3c4d5e6f708192a3b4c5d6e7f800",
+          "bytes_preserved": false,
+          "uuids_preserved": true,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"acct-002\", \"user_id\": {\"$binary\": {\"base64\": \"bxorPE1eb3CBkqO0xdbn+A==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030320005757365725f69640010000000036f1a2b3c4d5e6f708192a3b4c5d6e7f800",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {},
+          "hazard": true
+        },
+        {
+          "name": "legacy_export_standard_import",
+          "exported_json": "{\"_id\": \"acct-002\", \"user_id\": {\"$binary\": {\"base64\": \"cG9eTTwrGm/459bFtKOSgQ==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030320005757365725f6964001000000004706f5e4d3c2b1a6ff8e7d6c5b4a3928100",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        }
+      ],
+      "auto_convertible": true
+    },
+    {
+      "record_id": "acct-003",
+      "kind": "account",
+      "declared_source": "CSHARP_LEGACY",
+      "status": "rewrite",
+      "reasons": [
+        "declared CSHARP_LEGACY; rewrite to STANDARD verified by re-decoding"
+      ],
+      "uuid_fields": [
+        {
+          "path": "user_id",
+          "subtype": 3,
+          "stored_hex": "6b7c8d9e495a27381605f4e3d2c1b0a9",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "6b7c8d9e-495a-2738-1605-f4e3d2c1b0a9",
+            "JAVA_LEGACY": "38275a49-9e8d-7c6b-a9b0-c1d2e3f40516",
+            "CSHARP_LEGACY": "9e8d7c6b-5a49-3827-1605-f4e3d2c1b0a9",
+            "STANDARD": null
+          },
+          "canonical_uuid": "9e8d7c6b-5a49-3827-1605-f4e3d2c1b0a9",
+          "query_bytes": {
+            "PYTHON_LEGACY": {
+              "hex": "1e000000055f710010000000039e8d7c6b5a4938271605f4e3d2c1b0a900",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "JAVA_LEGACY": {
+              "hex": "1e000000055f710010000000032738495a6b7c8d9ea9b0c1d2e3f4051600",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "CSHARP_LEGACY": {
+              "hex": "1e000000055f710010000000036b7c8d9e495a27381605f4e3d2c1b0a900",
+              "subtype": 3,
+              "matches_stored_bytes": true
+            },
+            "STANDARD": {
+              "hex": "1e000000055f710010000000049e8d7c6b5a4938271605f4e3d2c1b0a900",
+              "subtype": 4,
+              "matches_stored_bytes": false
+            }
+          },
+          "rewrite": {
+            "from_subtype": 3,
+            "to_subtype": 4,
+            "from_hex": "6b7c8d9e495a27381605f4e3d2c1b0a9",
+            "to_hex": "9e8d7c6b5a4938271605f4e3d2c1b0a9"
+          }
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": "35000000025f69640009000000616363742d3030330005757365725f69640010000000049e8d7c6b5a4938271605f4e3d2c1b0a900",
+      "rewrite_verified": true,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"acct-003\", \"user_id\": {\"$binary\": {\"base64\": \"a3yNnklaJzgWBfTj0sGwqQ==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030330005757365725f69640010000000036b7c8d9e495a27381605f4e3d2c1b0a900",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"acct-003\", \"user_id\": {\"$binary\": {\"base64\": \"no18a1pJOCcWBfTj0sGwqQ==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030330005757365725f69640010000000049e8d7c6b5a4938271605f4e3d2c1b0a900",
+          "bytes_preserved": false,
+          "uuids_preserved": true,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"acct-003\", \"user_id\": {\"$binary\": {\"base64\": \"no18a1pJOCcWBfTj0sGwqQ==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030330005757365725f69640010000000039e8d7c6b5a4938271605f4e3d2c1b0a900",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {},
+          "hazard": true
+        },
+        {
+          "name": "legacy_export_standard_import",
+          "exported_json": "{\"_id\": \"acct-003\", \"user_id\": {\"$binary\": {\"base64\": \"a3yNnklaJzgWBfTj0sGwqQ==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030330005757365725f69640010000000046b7c8d9e495a27381605f4e3d2c1b0a900",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        }
+      ],
+      "auto_convertible": true
+    },
+    {
+      "record_id": "acct-004",
+      "kind": "account",
+      "declared_source": "STANDARD",
+      "status": "keep",
+      "reasons": [
+        "already STANDARD subtype 4"
+      ],
+      "uuid_fields": [
+        {
+          "path": "user_id",
+          "subtype": 4,
+          "stored_hex": "ffffffff111122223333444444444444",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "ffffffff-1111-2222-3333-444444444444",
+            "JAVA_LEGACY": "ffffffff-1111-2222-3333-444444444444",
+            "CSHARP_LEGACY": "ffffffff-1111-2222-3333-444444444444",
+            "STANDARD": "ffffffff-1111-2222-3333-444444444444"
+          },
+          "canonical_uuid": "ffffffff-1111-2222-3333-444444444444",
+          "query_bytes": {
+            "PYTHON_LEGACY": {
+              "hex": "1e000000055f71001000000003ffffffff11112222333344444444444400",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "JAVA_LEGACY": {
+              "hex": "1e000000055f7100100000000322221111ffffffff444444444444333300",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "CSHARP_LEGACY": {
+              "hex": "1e000000055f71001000000003ffffffff11112222333344444444444400",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "STANDARD": {
+              "hex": "1e000000055f71001000000004ffffffff11112222333344444444444400",
+              "subtype": 4,
+              "matches_stored_bytes": true
+            }
+          },
+          "rewrite": null
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": null,
+      "rewrite_verified": false,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"acct-004\", \"user_id\": {\"$binary\": {\"base64\": \"/////xERIiIzM0RERERERA==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030340005757365725f6964001000000004ffffffff11112222333344444444444400",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"acct-004\", \"user_id\": {\"$binary\": {\"base64\": \"/////xERIiIzM0RERERERA==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030340005757365725f6964001000000004ffffffff11112222333344444444444400",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"acct-004\", \"user_id\": {\"$binary\": {\"base64\": \"/////xERIiIzM0RERERERA==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030340005757365725f6964001000000003ffffffff11112222333344444444444400",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {
+            "user_id": "4->3"
+          },
+          "hazard": true
+        }
+      ],
+      "auto_convertible": false
+    },
+    {
+      "record_id": "acct-005",
+      "kind": "account",
+      "declared_source": null,
+      "status": "ambiguous",
+      "reasons": [
+        "subtype-3 UUID bytes without a declared source representation: PYTHON_LEGACY, JAVA_LEGACY and CSHARP_LEGACY decode them to different UUIDs (see decode_matrix); refusing to guess"
+      ],
+      "uuid_fields": [
+        {
+          "path": "user_id",
+          "subtype": 3,
+          "stored_hex": "11100f0e0d0c0b0a1918171615141312",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "11100f0e-0d0c-0b0a-1918-171615141312",
+            "JAVA_LEGACY": "0a0b0c0d-0e0f-1011-1213-141516171819",
+            "CSHARP_LEGACY": "0e0f1011-0c0d-0a0b-1918-171615141312",
+            "STANDARD": null
+          },
+          "canonical_uuid": null,
+          "query_bytes": null,
+          "rewrite": null
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": null,
+      "rewrite_verified": false,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"acct-005\", \"user_id\": {\"$binary\": {\"base64\": \"ERAPDg0MCwoZGBcWFRQTEg==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030350005757365725f696400100000000311100f0e0d0c0b0a191817161514131200",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"acct-005\", \"user_id\": {\"$binary\": {\"base64\": \"ERAPDg0MCwoZGBcWFRQTEg==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030350005757365725f696400100000000411100f0e0d0c0b0a191817161514131200",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"acct-005\", \"user_id\": {\"$binary\": {\"base64\": \"ERAPDg0MCwoZGBcWFRQTEg==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030350005757365725f696400100000000311100f0e0d0c0b0a191817161514131200",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        }
+      ],
+      "auto_convertible": false
+    },
+    {
+      "record_id": "acct-006",
+      "kind": "account",
+      "declared_source": "STANDARD",
+      "status": "keep",
+      "reasons": [
+        "already STANDARD subtype 4",
+        "identity collision: another sample holds the same canonical UUID in different bytes; automatic conversion would create duplicates"
+      ],
+      "uuid_fields": [
+        {
+          "path": "user_id",
+          "subtype": 4,
+          "stored_hex": "deadbeef123456789abcdef012345678",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "deadbeef-1234-5678-9abc-def012345678",
+            "JAVA_LEGACY": "deadbeef-1234-5678-9abc-def012345678",
+            "CSHARP_LEGACY": "deadbeef-1234-5678-9abc-def012345678",
+            "STANDARD": "deadbeef-1234-5678-9abc-def012345678"
+          },
+          "canonical_uuid": "deadbeef-1234-5678-9abc-def012345678",
+          "query_bytes": {
+            "PYTHON_LEGACY": {
+              "hex": "1e000000055f71001000000003deadbeef123456789abcdef01234567800",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "JAVA_LEGACY": {
+              "hex": "1e000000055f7100100000000378563412efbeadde78563412f0debc9a00",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "CSHARP_LEGACY": {
+              "hex": "1e000000055f71001000000003efbeadde341278569abcdef01234567800",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "STANDARD": {
+              "hex": "1e000000055f71001000000004deadbeef123456789abcdef01234567800",
+              "subtype": 4,
+              "matches_stored_bytes": true
+            }
+          },
+          "rewrite": null
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": null,
+      "rewrite_verified": false,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"acct-006\", \"user_id\": {\"$binary\": {\"base64\": \"3q2+7xI0VniavN7wEjRWeA==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030360005757365725f6964001000000004deadbeef123456789abcdef01234567800",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"acct-006\", \"user_id\": {\"$binary\": {\"base64\": \"3q2+7xI0VniavN7wEjRWeA==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030360005757365725f6964001000000004deadbeef123456789abcdef01234567800",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"acct-006\", \"user_id\": {\"$binary\": {\"base64\": \"3q2+7xI0VniavN7wEjRWeA==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030360005757365725f6964001000000003deadbeef123456789abcdef01234567800",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {
+            "user_id": "4->3"
+          },
+          "hazard": true
+        }
+      ],
+      "auto_convertible": false
+    },
+    {
+      "record_id": "acct-007",
+      "kind": "account",
+      "declared_source": "PYTHON_LEGACY",
+      "status": "rewrite",
+      "reasons": [
+        "declared PYTHON_LEGACY; rewrite to STANDARD verified by re-decoding",
+        "identity collision: another sample holds the same canonical UUID in different bytes; automatic conversion would create duplicates"
+      ],
+      "uuid_fields": [
+        {
+          "path": "user_id",
+          "subtype": 3,
+          "stored_hex": "deadbeef123456789abcdef012345678",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "deadbeef-1234-5678-9abc-def012345678",
+            "JAVA_LEGACY": "78563412-efbe-adde-7856-3412f0debc9a",
+            "CSHARP_LEGACY": "efbeadde-3412-7856-9abc-def012345678",
+            "STANDARD": null
+          },
+          "canonical_uuid": "deadbeef-1234-5678-9abc-def012345678",
+          "query_bytes": {
+            "PYTHON_LEGACY": {
+              "hex": "1e000000055f71001000000003deadbeef123456789abcdef01234567800",
+              "subtype": 3,
+              "matches_stored_bytes": true
+            },
+            "JAVA_LEGACY": {
+              "hex": "1e000000055f7100100000000378563412efbeadde78563412f0debc9a00",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "CSHARP_LEGACY": {
+              "hex": "1e000000055f71001000000003efbeadde341278569abcdef01234567800",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "STANDARD": {
+              "hex": "1e000000055f71001000000004deadbeef123456789abcdef01234567800",
+              "subtype": 4,
+              "matches_stored_bytes": false
+            }
+          },
+          "rewrite": {
+            "from_subtype": 3,
+            "to_subtype": 4,
+            "from_hex": "deadbeef123456789abcdef012345678",
+            "to_hex": "deadbeef123456789abcdef012345678"
+          }
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": "35000000025f69640009000000616363742d3030370005757365725f6964001000000004deadbeef123456789abcdef01234567800",
+      "rewrite_verified": true,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"acct-007\", \"user_id\": {\"$binary\": {\"base64\": \"3q2+7xI0VniavN7wEjRWeA==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030370005757365725f6964001000000003deadbeef123456789abcdef01234567800",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"acct-007\", \"user_id\": {\"$binary\": {\"base64\": \"3q2+7xI0VniavN7wEjRWeA==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030370005757365725f6964001000000004deadbeef123456789abcdef01234567800",
+          "bytes_preserved": false,
+          "uuids_preserved": true,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"acct-007\", \"user_id\": {\"$binary\": {\"base64\": \"3q2+7xI0VniavN7wEjRWeA==\", \"subType\": \"04\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030370005757365725f6964001000000003deadbeef123456789abcdef01234567800",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "legacy_export_standard_import",
+          "exported_json": "{\"_id\": \"acct-007\", \"user_id\": {\"$binary\": {\"base64\": \"3q2+7xI0VniavN7wEjRWeA==\", \"subType\": \"03\"}}}",
+          "reencoded_hex": "35000000025f69640009000000616363742d3030370005757365725f6964001000000004deadbeef123456789abcdef01234567800",
+          "bytes_preserved": false,
+          "uuids_preserved": true,
+          "subtype_changes": {
+            "user_id": "3->4"
+          },
+          "hazard": true
+        }
+      ],
+      "auto_convertible": false
+    },
+    {
+      "record_id": "audit-001",
+      "kind": "audit",
+      "declared_source": "CSHARP_LEGACY",
+      "status": "rewrite",
+      "reasons": [
+        "declared CSHARP_LEGACY; rewrite to STANDARD verified by re-decoding"
+      ],
+      "uuid_fields": [
+        {
+          "path": "actor",
+          "subtype": 3,
+          "stored_hex": "0dd001c03412bc4a8def0a1b2c3d4e5f",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "0dd001c0-3412-bc4a-8def-0a1b2c3d4e5f",
+            "JAVA_LEGACY": "4abc1234-c001-d00d-5f4e-3d2c1b0aef8d",
+            "CSHARP_LEGACY": "c001d00d-1234-4abc-8def-0a1b2c3d4e5f",
+            "STANDARD": null
+          },
+          "canonical_uuid": "c001d00d-1234-4abc-8def-0a1b2c3d4e5f",
+          "query_bytes": {
+            "PYTHON_LEGACY": {
+              "hex": "1e000000055f71001000000003c001d00d12344abc8def0a1b2c3d4e5f00",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "JAVA_LEGACY": {
+              "hex": "1e000000055f71001000000003bc4a34120dd001c05f4e3d2c1b0aef8d00",
+              "subtype": 3,
+              "matches_stored_bytes": false
+            },
+            "CSHARP_LEGACY": {
+              "hex": "1e000000055f710010000000030dd001c03412bc4a8def0a1b2c3d4e5f00",
+              "subtype": 3,
+              "matches_stored_bytes": true
+            },
+            "STANDARD": {
+              "hex": "1e000000055f71001000000004c001d00d12344abc8def0a1b2c3d4e5f00",
+              "subtype": 4,
+              "matches_stored_bytes": false
+            }
+          },
+          "rewrite": {
+            "from_subtype": 3,
+            "to_subtype": 4,
+            "from_hex": "0dd001c03412bc4a8def0a1b2c3d4e5f",
+            "to_hex": "c001d00d12344abc8def0a1b2c3d4e5f"
+          }
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": "46000000025f6964000a00000061756469742d30303100056163746f72001000000004c001d00d12344abc8def0a1b2c3d4e5f02616374696f6e00060000006c6f67696e0000",
+      "rewrite_verified": true,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"audit-001\", \"actor\": {\"$binary\": {\"base64\": \"DdABwDQSvEqN7wobLD1OXw==\", \"subType\": \"03\"}}, \"action\": \"login\"}",
+          "reencoded_hex": "46000000025f6964000a00000061756469742d30303100056163746f720010000000030dd001c03412bc4a8def0a1b2c3d4e5f02616374696f6e00060000006c6f67696e0000",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"audit-001\", \"actor\": {\"$binary\": {\"base64\": \"wAHQDRI0SryN7wobLD1OXw==\", \"subType\": \"04\"}}, \"action\": \"login\"}",
+          "reencoded_hex": "46000000025f6964000a00000061756469742d30303100056163746f72001000000004c001d00d12344abc8def0a1b2c3d4e5f02616374696f6e00060000006c6f67696e0000",
+          "bytes_preserved": false,
+          "uuids_preserved": true,
+          "subtype_changes": {
+            "actor": "3->4"
+          },
+          "hazard": true
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"audit-001\", \"actor\": {\"$binary\": {\"base64\": \"wAHQDRI0SryN7wobLD1OXw==\", \"subType\": \"04\"}}, \"action\": \"login\"}",
+          "reencoded_hex": "46000000025f6964000a00000061756469742d30303100056163746f72001000000003c001d00d12344abc8def0a1b2c3d4e5f02616374696f6e00060000006c6f67696e0000",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {},
+          "hazard": true
+        },
+        {
+          "name": "legacy_export_standard_import",
+          "exported_json": "{\"_id\": \"audit-001\", \"actor\": {\"$binary\": {\"base64\": \"DdABwDQSvEqN7wobLD1OXw==\", \"subType\": \"03\"}}, \"action\": \"login\"}",
+          "reencoded_hex": "46000000025f6964000a00000061756469742d30303100056163746f720010000000040dd001c03412bc4a8def0a1b2c3d4e5f02616374696f6e00060000006c6f67696e0000",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {
+            "actor": "3->4"
+          },
+          "hazard": true
+        }
+      ],
+      "auto_convertible": true
+    },
+    {
+      "record_id": "audit-002",
+      "kind": "audit",
+      "declared_source": null,
+      "status": "ambiguous",
+      "reasons": [
+        "subtype-3 UUID bytes without a declared source representation: PYTHON_LEGACY, JAVA_LEGACY and CSHARP_LEGACY decode them to different UUIDs (see decode_matrix); refusing to guess"
+      ],
+      "uuid_fields": [
+        {
+          "path": "actor",
+          "subtype": 3,
+          "stored_hex": "55555555666647778888999999999999",
+          "decode_matrix": {
+            "PYTHON_LEGACY": "55555555-6666-4777-8888-999999999999",
+            "JAVA_LEGACY": "77476666-5555-5555-9999-999999998888",
+            "CSHARP_LEGACY": "55555555-6666-7747-8888-999999999999",
+            "STANDARD": null
+          },
+          "canonical_uuid": null,
+          "query_bytes": null,
+          "rewrite": null
+        }
+      ],
+      "non_uuid_binaries": [],
+      "rewritten_bson_hex": null,
+      "rewrite_verified": false,
+      "ejson_probes": [
+        {
+          "name": "canonical_unspecified_roundtrip",
+          "exported_json": "{\"_id\": \"audit-002\", \"actor\": {\"$binary\": {\"base64\": \"VVVVVWZmR3eIiJmZmZmZmQ==\", \"subType\": \"03\"}}, \"action\": \"password_reset\"}",
+          "reencoded_hex": "4f000000025f6964000a00000061756469742d30303200056163746f720010000000035555555566664777888899999999999902616374696f6e000f00000070617373776f72645f72657365740000",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        },
+        {
+          "name": "relaxed_standard_roundtrip",
+          "exported_json": "{\"_id\": \"audit-002\", \"actor\": {\"$binary\": {\"base64\": \"VVVVVWZmR3eIiJmZmZmZmQ==\", \"subType\": \"03\"}}, \"action\": \"password_reset\"}",
+          "reencoded_hex": "4f000000025f6964000a00000061756469742d30303200056163746f720010000000045555555566664777888899999999999902616374696f6e000f00000070617373776f72645f72657365740000",
+          "bytes_preserved": false,
+          "uuids_preserved": false,
+          "subtype_changes": {
+            "actor": "3->4"
+          },
+          "hazard": true
+        },
+        {
+          "name": "relaxed_standard_export_legacy_import",
+          "exported_json": "{\"_id\": \"audit-002\", \"actor\": {\"$binary\": {\"base64\": \"VVVVVWZmR3eIiJmZmZmZmQ==\", \"subType\": \"03\"}}, \"action\": \"password_reset\"}",
+          "reencoded_hex": "4f000000025f6964000a00000061756469742d30303200056163746f720010000000035555555566664777888899999999999902616374696f6e000f00000070617373776f72645f72657365740000",
+          "bytes_preserved": true,
+          "uuids_preserved": true,
+          "subtype_changes": {},
+          "hazard": false
+        }
+      ],
+      "auto_convertible": false
+    }
+  ],
+  "collisions": [
+    {
+      "canonical_uuid": "deadbeef-1234-5678-9abc-def012345678",
+      "members": [
+        {
+          "record_id": "acct-006",
+          "path": "user_id",
+          "stored_hex": "deadbeef123456789abcdef012345678",
+          "subtype": "4"
+        },
+        {
+          "record_id": "acct-007",
+          "path": "user_id",
+          "stored_hex": "deadbeef123456789abcdef012345678",
+          "subtype": "3"
+        }
+      ],
+      "distinct_stored_forms": 2,
+      "post_migration": "all forms migrate to identical subtype-4 bytes; unique indexes would report duplicates and separate rows would merge into one identity"
+    }
+  ]
+}
